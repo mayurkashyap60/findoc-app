@@ -18,7 +18,8 @@ class LoginScreen extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (_) => const HomeScreen()),
             );
-          } else if (state.isFailure) {
+          } else if (state.isFailure && state.isEmailValid && state.isPasswordValid) {
+            // Show snackbar ONLY if credentials format is valid but authentication fails
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Invalid credentials!')),
             );
@@ -50,8 +51,7 @@ class LoginScreen extends StatelessWidget {
                     obscureText: true,
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      errorText:
-                      state.isPasswordValid ? null : 'Password too weak',
+                      errorText: state.isPasswordValid ? null : 'Password too weak',
                     ),
                   );
                 },
@@ -60,7 +60,9 @@ class LoginScreen extends StatelessWidget {
               BlocBuilder<LoginBloc, LoginState>(
                 builder: (context, state) {
                   return ElevatedButton(
-                    onPressed: state.isSubmitting
+                    onPressed: state.isSubmitting ||
+                        !state.isEmailValid ||
+                        !state.isPasswordValid
                         ? null
                         : () {
                       context.read<LoginBloc>().add(LoginSubmitted());

@@ -14,6 +14,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<ImageModel> _images = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -22,16 +23,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchImages() async {
-    final response = await http
-        .get(Uri.parse('https://picsum.photos/v2/list?page=1&limit=10'));
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
+    try {
+      final response = await http.get(
+        Uri.parse('https://picsum.photos/v2/list?page=1&limit=10'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _images = data.map((json) => ImageModel.fromJson(json)).toList();
+          _isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load images');
+      }
+    } catch (e) {
       setState(() {
-        _images = data.map((json) => ImageModel.fromJson(json)).toList();
+        _error = e.toString();
         _isLoading = false;
       });
-    } else {
-      throw Exception('Failed to load images');
     }
   }
 
@@ -39,10 +48,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Home Screen"),
+        title: Text(
+          "Home Screen",
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(child: Text("Error: $_error"))
           : ListView.builder(
         padding: const EdgeInsets.all(12),
         itemCount: _images.length,
@@ -57,11 +73,27 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Image.network(
-                  image.downloadUrl,
-                  width: screenWidth,
-                  height: imageHeight,
-                  fit: BoxFit.cover,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    image.downloadUrl,
+                    width: screenWidth,
+                    height: imageHeight,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        width: screenWidth,
+                        height: imageHeight,
+                        color: Colors.grey.shade200,
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
